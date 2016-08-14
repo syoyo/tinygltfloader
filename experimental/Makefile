@@ -1,4 +1,5 @@
 all:
-	python gen.py buffer.schema.json > gen.cc
-	clang-format -i gen.cc
-	cat gen.cc
+	python gen.py buffer.schema.json 
+	clang-format -i output.cc
+	cat output.cc
+	clang++ -c output.cc
