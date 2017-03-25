@@ -28,7 +28,7 @@ def emitStruct(title, properties):
     s = "typedef struct {\n"
     for prop_name in properties:
         p = properties[prop_name]
-        if p.has_key('type'):
+        if 'type' in p:
             s += typeToString(p['type']) + " " + prop_name + ";\n"
     s += '} ' + title + ';\n'
 
@@ -36,30 +36,30 @@ def emitStruct(title, properties):
 
 def genParseIntProperty(title, propname, prop):
     s = ""
-    s += 'bool Parse_${propname}(int64_t *s, std::string *err, picojson::object &o) {\n'
+    s += 'bool Parse_${propname}(int64_t *s, std::string *err, json &o) {\n'
     s += '  if (!s) return false; \n'
     s += '  std::stringstream ss; \n'
     s += '  int64_t value;\n'
-    s += '  picojson::object::const_iterator it = o.find("${propname}");\n'
+    s += '  json::const_iterator it = o.find("${propname}");\n'
     s += '\n'
 
-    if prop.has_key('required') and prop['required'] == True:
-        s += '  if (it == o.end()) {;\n'
+    if ('required' in prop) and prop['required'] == True:
+        s += '  if (it == o.end()) {\n'
         s += '    ss << "\\"${propname}\\" is a required field but missing in `${title}\' property" << std::endl;\n'
         s += '    goto fail;\n'
         s += '  }\n'
     else:
-        if prop.has_key('default'):
+        if 'default' in prop:
             s += '  value = ${default};\n'
         s += '  if (it != o.end()) {\n'
-        s += '    if (!(it->second.is<double>())) {\n'
-        s += '      ss << "\\"${propname}\\" field is not a integer type" << std::endl;\n'
+        s += '    if (!(it.value().is_number())) {\n'
+        s += '      ss << "\\"${propname}\\" field is not a number type" << std::endl;\n'
         s += '      goto fail;\n'
         s += '    }\n'     
-        s += '    value = it->second.get<double>();\n'
+        s += '    value = it.value().get<int>();\n'
         s += '  }\n'
 
-    if prop.has_key('minimum'):
+    if 'minimum' in prop:
         min_value = int(prop['minimum'])
         ss  = "{\n"
         ss += "  const int64_t min_value = {0};\n".format(min_value) 
@@ -83,7 +83,7 @@ def genParseIntProperty(title, propname, prop):
     s += '\n'
 
     d = {}
-    if prop.has_key('default'):
+    if 'default' in prop:
         d['default'] = prop['default']
     d['propname'] = propname
     d['title'] = title
@@ -94,30 +94,30 @@ def genParseIntProperty(title, propname, prop):
 
 def genParseStingProperty(title, propname, prop):
     s = ""
-    s += 'bool Parse_${propname}(std::string *s, std::string *err, picojson::object &o) {\n'
+    s += 'bool Parse_${propname}(std::string *s, std::string *err, json &o) {\n'
     s += '  if (!s) return false; \n'
     s += '  std::stringstream ss; \n'
     s += '  std::string value;\n'
-    s += '  picojson::object::const_iterator it = o.find("${propname}");\n'
+    s += '  json::const_iterator it = o.find("${propname}");\n'
     s += '\n'
 
-    if prop.has_key('required') and prop['required'] == True:
-        s += '  if (it == o.end()) {;\n'
+    if ('required' in prop) and prop['required'] == True:
+        s += '  if (it == o.end()) {\n'
         s += '    ss << "\\"${propname}\\" is a required field but missing in `${title}\' property" << std::endl;\n'
         s += '    goto fail;\n'
         s += '  }\n'
     else:
-        if prop.has_key('default'):
+        if 'default' in prop:
             s += '  value = "${default}";\n'
         s += '  if (it != o.end()) {\n'
-        s += '    if (!(it->second.is<std::string>())) {\n'
+        s += '    if (!(it.value().is_string())) {\n'
         s += '      ss << "\\"${propname}\\" field is not a string type" << std::endl;\n'
         s += '      goto fail;\n'
         s += '    }\n'     
-        s += '    value = it->second.get<std::string>();\n'
+        s += '    value = it.value().get<std::string>();\n'
         s += '  }\n'
 
-    if prop.has_key('enum'):
+    if 'enum' in prop:
         enum_list = prop['enum']
         ss  = "{\n"
         ss += "  const char *enum_lists[] = {" + CommaSepStringArray(enum_list) + "};\n"
@@ -145,7 +145,7 @@ def genParseStingProperty(title, propname, prop):
     s += '\n'
 
     d = {}
-    if prop.has_key('default'):
+    if 'default' in prop:
         d['default'] = prop['default']
     d['propname'] = propname
     d['title'] = title
@@ -172,13 +172,17 @@ def main():
 
     s += "#include <string>\n"
     s += "#include <sstream>\n"
-    s += "#include \"picojson.h\"\n"
+    s += "#include \"json.hpp\"\n"
+    s += "\n"
+    s += "using json = nlohmann::json;\n"
 
     s += emitStruct(root['title'], properties)
 
+    s += "\n"
+
     for prop in properties:
         p = properties[prop]
-        if p.has_key('type'):
+        if 'type' in p:
             if p['type'] == "string":
                 s += genParseStingProperty(root['title'], prop, p)
             elif p['type'] == "integer":
