@@ -339,12 +339,17 @@ Points::~Points() {}
 
 class Scene {
  public:
-  Scene() : root_node(NULL) {}
+  Scene() {}
   ~Scene() { Destroy(); }
 
   void Destroy() {
-    delete root_node;
-    root_node = NULL;
+    {
+      std::map<std::string, const Node *>::const_iterator it(
+          root_node_map.begin());
+      for (; it != root_node_map.end(); it++) {
+        delete it->second;
+      }
+    }
 
     {
       std::map<std::string, const Xform *>::const_iterator it(
@@ -377,8 +382,7 @@ class Scene {
 
   std::map<std::string, int> id_map;
 
-  const Node *root_node;
-  // std::map<std::string, Node*> node_map;
+  std::map<std::string, const Node *> root_node_map;
 };
 
 // ----------------------------------------------------------------
@@ -688,7 +692,7 @@ static void readPolyUVs(std::vector<float> *uvs,
 // Traverse Alembic object tree and extract data.
 static void VisitObjectAndExtractNode(Node *node_out, std::stringstream &ss,
                                       const Alembic::AbcGeom::IObject &obj,
-                                      const std::string &indent) {
+                                      const std::string &indent, const bool verbose = false) {
   std::string path = obj.getFullName();
   node_out->name = path;
 
@@ -763,15 +767,17 @@ static void VisitObjectAndExtractNode(Node *node_out, std::stringstream &ss,
       Alembic::AbcGeom::IPolyMeshSchema::Sample psample;
       Alembic::AbcGeom::IPolyMeshSchema &ps = pmesh.getSchema();
 
-      std::cout << "  # of samples = " << ps.getNumSamples() << std::endl;
+      if (verbose) {
+        std::cout << "  # of samples = " << ps.getNumSamples() << std::endl;
+      }
 
       if (ps.getNumSamples() > 0) {
         Mesh *mesh = new Mesh();
         ps.get(psample, samplesel);
         Alembic::Abc::P3fArraySamplePtr P = psample.getPositions();
-        std::cout << "  # of positions   = " << P->size() << std::endl;
-        std::cout << "  # of face counts = " << psample.getFaceCounts()->size()
-                  << std::endl;
+        //std::cout << "  # of positions   = " << P->size() << std::endl;
+        //std::cout << "  # of face counts = " << psample.getFaceCounts()->size()
+        //          << std::endl;
 
         std::vector<unsigned int> faces;  // temp
         bool ret = BuildFaceSet(faces, P, psample.getFaceIndices(),
@@ -789,9 +795,11 @@ static void VisitObjectAndExtractNode(Node *node_out, std::stringstream &ss,
         std::vector<float> normals;
         std::vector<float> facevarying_normals;
         readPolyNormals(&normals, &facevarying_normals, normals_param);
-        std::cout << "  # of normals   = " << (normals.size() / 3) << std::endl;
-        std::cout << "  # of facevarying normals   = "
-                  << (facevarying_normals.size() / 3) << std::endl;
+        if (verbose) {
+          std::cout << "  # of normals   = " << (normals.size() / 3) << std::endl;
+          std::cout << "  # of facevarying normals   = "
+                    << (facevarying_normals.size() / 3) << std::endl;
+        }
 
         // TODO(syoyo): Do not generate normals when `facevarying_normals'
         // exists.
@@ -813,16 +821,20 @@ static void VisitObjectAndExtractNode(Node *node_out, std::stringstream &ss,
         std::vector<float> uvs;
         std::vector<float> facevarying_uvs;
         readPolyUVs(&uvs, &facevarying_uvs, uvs_param);
-        std::cout << "  # of uvs   = " << (uvs.size() / 2) << std::endl;
-        std::cout << "  # of facevarying_uvs   = "
-                  << (facevarying_uvs.size() / 2) << std::endl;
+        if (verbose) {
+          std::cout << "  # of uvs   = " << (uvs.size() / 2) << std::endl;
+          std::cout << "  # of facevarying_uvs   = "
+                    << (facevarying_uvs.size() / 2) << std::endl;
+        }
         mesh->texcoords = uvs;
         mesh->facevarying_texcoords = facevarying_uvs;
 
         node = mesh;
 
       } else {
-        std::cout << "Warning: # of samples = 0" << std::endl;
+        if (verbose) {
+          std::cout << "Warning: # of samples = 0" << std::endl;
+        }
       }
     } else if (Alembic::AbcGeom::ICurves::matches(header)) {
       ss << "    ICurves" << std::endl;
@@ -835,13 +847,17 @@ static void VisitObjectAndExtractNode(Node *node_out, std::stringstream &ss,
       Alembic::AbcGeom::ICurvesSchema::Sample psample;
       Alembic::AbcGeom::ICurvesSchema &ps = curve.getSchema();
 
-      std::cout << "Curve:  # of samples = " << ps.getNumSamples() << std::endl;
+      if (verbose) {
+        std::cout << "Curve:  # of samples = " << ps.getNumSamples() << std::endl;
+      }
 
       if (ps.getNumSamples() > 0) {
         ps.get(psample, samplesel);
 
         const size_t num_curves = psample.getNumCurves();
-        std::cout << "  # of curves = " << num_curves << std::endl;
+        if (verbose) {
+          std::cout << "  # of curves = " << num_curves << std::endl;
+        }
 
         if (num_curves > 0) {
           Curves *curves = new Curves();
@@ -853,10 +869,17 @@ static void VisitObjectAndExtractNode(Node *node_out, std::stringstream &ss,
           Alembic::Abc::Int32ArraySamplePtr num_vertices =
               psample.getCurvesNumVertices();
 
-          if (knots) std::cout << "  # of knots= " << knots->size() << std::endl;
-          if (orders)
+          if (knots && verbose) {
+            std::cout << "  # of knots= " << knots->size() << std::endl;
+          }
+
+          if (orders && verbose) {
             std::cout << "  # of orders= " << orders->size() << std::endl;
-          std::cout << "  # of nvs= " << num_vertices->size() << std::endl;
+          }
+
+          if (verbose) {
+            std::cout << "  # of nvs= " << num_vertices->size() << std::endl;
+          }
 
           curves->points.resize(3 * P->size());
           memcpy(curves->points.data(), P->get(), sizeof(float) * 3 * P->size());
@@ -917,9 +940,64 @@ static void VisitObjectAndExtractNode(Node *node_out, std::stringstream &ss,
 static bool ConvertNodeToGLTF(picojson::object *root_out, const Scene &scene,
                               const Node *node) {
   assert(node);
-  assert(!node->name.empty());
+  assert(!(node->name.empty()));
 
-  // FIXME(syoyo): Add serialization method for each class.
+  // FIXME(syoyo): Refactor tree traversal.
+  if (scene.root_node_map.find(node->name) != scene.root_node_map.end()) {
+    std::cout << "root_node: " << node->name << std::endl;
+
+    // ident matrix
+    picojson::array json_xform;
+    json_xform.push_back(picojson::value(1.0));
+    json_xform.push_back(picojson::value(0.0));
+    json_xform.push_back(picojson::value(0.0));
+    json_xform.push_back(picojson::value(0.0));
+
+    json_xform.push_back(picojson::value(0.0));
+    json_xform.push_back(picojson::value(1.0));
+    json_xform.push_back(picojson::value(0.0));
+    json_xform.push_back(picojson::value(0.0));
+
+    json_xform.push_back(picojson::value(0.0));
+    json_xform.push_back(picojson::value(0.0));
+    json_xform.push_back(picojson::value(1.0));
+    json_xform.push_back(picojson::value(0.0));
+
+    json_xform.push_back(picojson::value(0.0));
+    json_xform.push_back(picojson::value(0.0));
+    json_xform.push_back(picojson::value(0.0));
+    json_xform.push_back(picojson::value(1.0));
+
+    picojson::object json_node;
+    json_node["matrix"] = picojson::value(json_xform);
+    json_node["name"] = picojson::value(node->name);
+
+    picojson::array json_children;
+    std::cout << "children size : " << node->children.size() << std::endl;
+    if (node->children.size() > 0) {
+      for (size_t i = 0; i < node->children.size(); i++) {
+        if (node->children[i]) {
+          picojson::object json_child_node;
+          bool ret = ConvertNodeToGLTF(root_out, scene, node->children[i]);
+          if (ret) {
+            assert(!(node->children[i]->name.empty()));
+            json_children.push_back(picojson::value(node->children[i]->name));
+          }
+        }
+      }
+
+      std::cout << "JSON children size : " << json_children.size() << std::endl;
+      if (!json_children.empty()) {
+        json_node["children"] = picojson::value(json_children);
+      }
+    }
+
+    (*root_out)[node->name] = picojson::value(json_node);
+
+    return true;
+
+  } 
+  
   if (dynamic_cast<const Xform *>(node)) {
     const Xform *xform = dynamic_cast<const Xform *>(node);
 
@@ -981,6 +1059,7 @@ static bool ConvertNodeToGLTF(picojson::object *root_out, const Scene &scene,
 
     (*root_out)[node->name] = picojson::value(json_node);
   } else {
+    std::cout << "non xform node : " << node->name << std::endl;
     return false;
   }
 
@@ -988,18 +1067,22 @@ static bool ConvertNodeToGLTF(picojson::object *root_out, const Scene &scene,
 }
 
 static bool ConvertSceneToGLTF(picojson::object *out, const Scene &scene) {
-  assert(scene.root_node);
+  assert(scene.root_node_map.size() > 0);
 
   // Nodes
-  picojson::object nodes;
   picojson::array node_names;
-  {
-    // picojson::object node;
+  picojson::object nodes;
+  std::map<std::string, const Node *>::const_iterator node_it(
+      scene.root_node_map.begin());
+  std::map<std::string, const Node *>::const_iterator node_it_end(
+      scene.root_node_map.end());
+  for (; node_it != node_it_end; node_it++) {
+    picojson::object node;
+    ConvertNodeToGLTF(&node, scene, node_it->second);
 
-    ConvertNodeToGLTF(&nodes, scene, scene.root_node);
+    node_names.push_back(picojson::value(node_it->first));
 
-    // nodes[scene.root_node->name] = picojson::value(node);
-    node_names.push_back(picojson::value(scene.root_node->name));
+    nodes[node_it->first] = picojson::value(node);
   }
   (*out)["nodes"] = picojson::value(nodes);
 
@@ -1404,7 +1487,7 @@ static bool SaveSceneToGLTF(const std::string &output_filename,
 
     const int id = (scene.id_map.find(curves.name))->second;
 
-    std::cout << "Curves: " << curves.name << std::endl;
+    //std::cout << "Curves: " << curves.name << std::endl;
     bool ret = ConvertCurvesToGLTF(&buffers, &buffer_views, &meshes, &accessors,
                                    curves, id);
     assert(ret);
@@ -1449,16 +1532,9 @@ static void ConvertNodeToScene(Scene *scene, int *id, const Node *node) {
   std::cout << "node " << node->name << std::endl;
 
   if (dynamic_cast<const Xform *>(node)) {
-    // Allow only one root node in the scene.
-    if (scene->root_node == NULL) {
-      scene->root_node = node;
-    } else {
-      // Assume child xform node
-      assert(scene->xform_map.find(node->name) == scene->xform_map.end());
-      scene->xform_map[node->name] = dynamic_cast<const Xform *>(node);
-      // scene->id_map[node->name] = (*id)++;
-    }
-
+    assert(scene->xform_map.find(node->name) == scene->xform_map.end());
+    scene->xform_map[node->name] = dynamic_cast<const Xform *>(node);
+    // scene->id_map[node->name] = (*id)++;
   } else if (dynamic_cast<const Mesh *>(node)) {
     assert(scene->mesh_map.find(node->name) == scene->mesh_map.end());
     scene->mesh_map[node->name] = dynamic_cast<const Mesh *>(node);
@@ -1467,6 +1543,8 @@ static void ConvertNodeToScene(Scene *scene, int *id, const Node *node) {
     assert(scene->curves_map.find(node->name) == scene->curves_map.end());
     scene->curves_map[node->name] = dynamic_cast<const Curves *>(node);
     scene->id_map[node->name] = (*id)++;
+  } else {
+    // may be root node.
   }
 
   for (size_t i = 0; i < node->children.size(); i++) {
@@ -1495,16 +1573,23 @@ int main(int argc, char **argv) {
 
   Scene scene;
   std::stringstream ss;
-  Node *node = new Node();
+  Node *node = new Node();  // TODO(syoyo): refactor.
   VisitObjectAndExtractNode(node, ss, root, /* indent */ "  ");
+
+  scene.root_node_map["/"] = node;
 
   // std::cout << ss.str() << std::endl;
 
   int id = 1;  // ID starts from 1.
-  ConvertNodeToScene(&scene, &id, node);
-  delete node;
+  std::map<std::string, const Node *>::const_iterator it(
+      scene.root_node_map.begin());
+  for (; it != scene.root_node_map.end(); it++) {
+    ConvertNodeToScene(&scene, &id, it->second);
+  }
 
   SaveSceneToGLTF(gltf_filename, scene);
+
+  //delete node;
 
   return EXIT_SUCCESS;
 }
