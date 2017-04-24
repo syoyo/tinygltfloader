@@ -307,7 +307,7 @@ int main(int argc, char** argv) {
   std::string gltf_filename;
 
   if (argc < 3) {
-    std::cerr << "Usage: cyhair2abc input.hair output.gltf" << std::endl;
+    std::cerr << "Usage: cyhair2gltf input.hair output.gltf" << std::endl;
     return EXIT_FAILURE;
   }
 
