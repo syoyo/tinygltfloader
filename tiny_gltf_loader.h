@@ -148,13 +148,6 @@ typedef enum {
   OBJECT_TYPE = 7
 } Type;
 
-#ifdef __clang__
-#pragma clang diagnostic push
-// Suppress warning for : static Value null_value
-// https://stackoverflow.com/questions/15708411/how-to-deal-with-global-constructor-warning-in-clang
-#pragma clang diagnostic ignored "-Wexit-time-destructors"
-#endif
-
 // Simple class to represent JSON object
 class Value {
  public:
@@ -203,21 +196,19 @@ class Value {
   T &Get();
 
   // Lookup value from an array
-  const Value &Get(int idx) const {
-    static Value null_value;
+  inline const Value &Get(int idx) const {
     assert(IsArray());
     assert(idx >= 0);
     return (static_cast<size_t>(idx) < array_value_.size())
                ? array_value_[static_cast<size_t>(idx)]
-               : null_value;
+               : null_value_;
   }
 
   // Lookup value from a key-value pair
-  const Value &Get(const std::string &key) const {
-    static Value null_value;
+  inline const Value &Get(const std::string &key) const {
     assert(IsObject());
     Object::const_iterator it = object_value_.find(key);
-    return (it != object_value_.end()) ? it->second : null_value;
+    return (it != object_value_.end()) ? it->second : null_value_;
   }
 
   size_t ArrayLen() const {
@@ -258,11 +249,10 @@ class Value {
   char pad[3];
 
   int pad0;
-};
 
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
+ private:
+  static Value null_value_; 
+};
 
 #define TINYGLTF_VALUE_GET(ctype, var)            \
   template <>                                     \
