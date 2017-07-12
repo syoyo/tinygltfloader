@@ -1,6 +1,8 @@
-# Tiny glTF loader, header only C++ glTF parsing library.
+# Tiny glTF loader, header only C++ glTF 1.x parsing library.
 
-`TinyGLTFLoader` is a header only C++ glTF https://github.com/KhronosGroup/glTF parsing library
+`TinyGLTFLoader` is a header only C++ glTF 1.x https://github.com/KhronosGroup/glTF parsing library.
+
+**TinyGLTFLoader is deprecated. Please go https://github.com/syoyo/tinygltf for glTF 2.0 parser/serializer**
 
 ![](images/glview_duck.png)
 
