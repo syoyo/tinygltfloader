@@ -128,11 +128,13 @@ bool CyHair::Load(const char *filename) {
   CyHairHeader header;
 
   if (1 != fread(&header, 128, 1, fp)) {
+    std::cerr << "header read error" << std::endl;
     fclose(fp);
     return false;
   }
   if (memcmp(header.magic, "HAIR", 4) != 0) {
     fclose(fp);
+    std::cerr << "magic number mismatch" << std::endl;
     return false;
   }
 
