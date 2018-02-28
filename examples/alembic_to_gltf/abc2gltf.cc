@@ -1491,6 +1491,7 @@ int main(int argc, char **argv) {
 
   if (!archive.valid()) {
     std::cerr << "Failed to read abc file : " << abc_filename << std::endl;
+    std::cerr << "Probably file is not Alembic format or Alembic file is using HDF5 format but Alembic library is not compiled with HDF5 support." << std::endl;
     return EXIT_FAILURE;
   }
 
