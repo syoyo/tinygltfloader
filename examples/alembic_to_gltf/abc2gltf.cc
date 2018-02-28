@@ -1489,6 +1489,11 @@ int main(int argc, char **argv) {
   Alembic::AbcCoreFactory::IFactory factory;
   Alembic::AbcGeom::IArchive archive = factory.getArchive(abc_filename);
 
+  if (!archive.valid()) {
+    std::cerr << "Failed to read abc file : " << abc_filename << std::endl;
+    return EXIT_FAILURE;
+  }
+
   Alembic::AbcGeom::IObject root = archive.getTop();
 
   std::cout << "# of children " << root.getNumChildren() << std::endl;
