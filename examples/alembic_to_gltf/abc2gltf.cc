@@ -1178,7 +1178,7 @@ static bool ConvertMeshToGLTF(picojson::object *buffers_out,
       accessor_vertices["componentType"] =
           picojson::value(static_cast<int64_t>(TINYGLTF_COMPONENT_TYPE_FLOAT));
       accessor_vertices["count"] =
-          picojson::value(static_cast<int64_t>(mesh.vertices.size()));
+          picojson::value(static_cast<int64_t>(mesh.vertices.size() / 3));
       accessor_vertices["type"] = picojson::value(std::string("VEC3"));
       (*accessors_out)["accessor_vertices" + prefix] =
           picojson::value(accessor_vertices);
@@ -1194,7 +1194,7 @@ static bool ConvertMeshToGLTF(picojson::object *buffers_out,
       accessor_normals["componentType"] =
           picojson::value(static_cast<int64_t>(TINYGLTF_COMPONENT_TYPE_FLOAT));
       accessor_normals["count"] =
-          picojson::value(static_cast<int64_t>(mesh.vertices.size()));
+          picojson::value(static_cast<int64_t>(mesh.vertices.size() / 3));
       accessor_normals["type"] = picojson::value(std::string("VEC3"));
       (*accessors_out)["accessor_normals" + prefix] =
           picojson::value(accessor_normals);
